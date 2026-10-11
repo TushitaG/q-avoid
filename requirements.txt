@@ -1,0 +1,8 @@
+qiskit>=2.0
+numpy
+scipy
+pandas
+matplotlib
+pylatexenc
+jinja2
+ipykernel
