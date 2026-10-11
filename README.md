@@ -43,7 +43,9 @@ For large sweeps, both methods use exact statistical shortcuts: binomial hit cou
 
 ```bash
 python -m venv .venv && .venv/Scripts/activate      # Windows
-pip install -r requirements.txt
+pip install -r requirements.txt               # enough for main.py
+pip install -r requirements-notebook.txt      # extras for the notebook
+python main.py                                # standalone run, ~2 min
 # Get the dataset: https://zenodo.org/records/4463683
 # extract kelvins_competition_data/train_data.zip -> data/train_data.csv
 jupyter notebook q_avoid.ipynb

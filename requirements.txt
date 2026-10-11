@@ -3,6 +3,3 @@ numpy
 scipy
 pandas
 matplotlib
-pylatexenc
-jinja2
-ipykernel

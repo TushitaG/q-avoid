@@ -19,6 +19,7 @@ Dataset: https://zenodo.org/records/4463683 -> data/train_data.csv
 
 import argparse
 import os
+import sys
 from dataclasses import dataclass
 
 import numpy as np
@@ -398,7 +399,9 @@ def main():
     parser.add_argument("--quick", action="store_true", help="fewer repetitions")
     parser.add_argument("--data", default=DATA_PATH, help="path to Kelvins train_data.csv")
     args = parser.parse_args()
-    reps = 60 if args.quick else 200
+    # In-browser runs (Pyodide) are much slower and can't take CLI flags.
+    quick = args.quick or sys.platform == "emscripten"
+    reps = 60 if quick else 200
     rng = np.random.default_rng(2026)
 
     encounters = None
@@ -415,7 +418,7 @@ def main():
     A, pc = check_circuit(enc, grid, rng)
 
     print("\n== 2. MLAE on the Qiskit sampler ==")
-    qiskit_mlae(A, grid, pc, rng, runs=10 if args.quick else 30)
+    qiskit_mlae(A, grid, pc, rng, runs=10 if quick else 30)
 
     print("\n== 3. Error vs cost (equal oracle calls) ==")
     err = error_vs_queries(grid, pc, rng, reps)

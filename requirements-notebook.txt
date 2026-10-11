@@ -1,0 +1,4 @@
+-r requirements.txt
+pylatexenc
+jinja2
+ipykernel
