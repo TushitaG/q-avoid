@@ -1,20 +1,5 @@
 """
 Q-Avoid: quantum amplitude estimation for satellite collision risk.
-
-Self-contained version of the notebook (q_avoid.ipynb). Runs the core
-experiments and prints the results:
-
-  1. build the 7-qubit circuit whose hit-qubit probability equals Pc
-  2. run maximum-likelihood amplitude estimation (MLAE) on a Qiskit sampler
-  3. error vs. cost: MLAE vs Monte Carlo at the same number of oracle calls
-  4. cost of a 10%-accurate estimate as events get rarer
-  5. (if the ESA dataset is present) maneuver-decision accuracy over real events
-
-Without the dataset it uses a real ESA conjunction (event 12555) built in below.
-Dataset: https://zenodo.org/records/4463683 -> data/train_data.csv
-
-    python main.py              # full run, ~1-2 min without the dataset
-    python main.py --quick      # fewer repetitions
 """
 
 import argparse
@@ -104,7 +89,17 @@ def load_kelvins(path, min_log_risk=-6.0):
     last = last[last["risk"] > min_log_risk].dropna()
     return [encounter_from_row(row) for _, row in last.iterrows()]
 
-
+def mlae_on_backend(A, grid, pc, backend, shots=1000):
+    schedule, n, G = [0, 1, 2], A.num_qubits, build_grover(A)
+    packed = QuantumCircuit(n * len(schedule), len(schedule))
+    for i, k in enumerate(schedule):
+        packed.compose(amplified_circuit(A, G, k, measure=False),
+                       qubits=range(i * n, (i + 1) * n), inplace=True)
+        packed.measure(i * n + n - 1, i)
+    counts = backend.run(transpile(packed, backend), shots=shots).result().get_counts()
+    hits = [sum(c for b, c in counts.items() if b.replace(" ", "")[-1 - i] == "1")
+            for i in range(len(schedule))]
+    print(hits, mlae_fit(schedule, hits, shots) * grid.box_mass, pc)
 # ---------------------------------------------------------------------------
 # Classical baseline
 # ---------------------------------------------------------------------------
@@ -395,10 +390,11 @@ def save_figures(err, cost, pc, folder="figures"):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__.split("\n")[1])
+    parser = argparse.ArgumentParser(
+    description="Q-Avoid: quantum amplitude estimation for satellite collision risk.")
     parser.add_argument("--quick", action="store_true", help="fewer repetitions")
     parser.add_argument("--data", default=DATA_PATH, help="path to Kelvins train_data.csv")
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()
     # In-browser runs (Pyodide) are much slower and can't take CLI flags.
     quick = args.quick or sys.platform == "emscripten"
     reps = 60 if quick else 200
@@ -419,6 +415,7 @@ def main():
 
     print("\n== 2. MLAE on the Qiskit sampler ==")
     qiskit_mlae(A, grid, pc, rng, runs=10 if quick else 30)
+    mlae_on_backend(A, grid, pc, backend)
 
     print("\n== 3. Error vs cost (equal oracle calls) ==")
     err = error_vs_queries(grid, pc, rng, reps)
@@ -433,5 +430,3 @@ def main():
     save_figures(err, cost, pc)
 
 
-if __name__ == "__main__":
-    main()
